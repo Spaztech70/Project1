@@ -138,6 +138,8 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 * Write the data content to the client network connection. This MUST
 * be done after the HTTP header has been written out.
 * @param os is the OutputStream object to write to
+* @param st is a string used as an intermediary for passing a line of htm to os
+* @param check is a temporary string for identifying one of two special tags which are to be substituted with by a date or the server name when passed to os
 **/
 private void writeContent(OutputStream os, String fileName) throws Exception
 {
@@ -171,8 +173,10 @@ private void writeContent(OutputStream os, String fileName) throws Exception
 					"	      		\"107%;color:#C00000'>Sanford J's Awesome Web Browser<o:p><br /></o:p></span>" + "<br />";
 				os.write(st.getBytes());
 				}
+	    	// Output the string of text to the web client
 			else 
 			{
+			//TEST CODE FOR ALTERNATIVELY PASSING DESIRED STRING TO THE CLIENT
 	    	/*char oneChar = ' ';
 	    	for (int i = 0; i < st.length(); i++)
 	    	{
@@ -185,6 +189,7 @@ private void writeContent(OutputStream os, String fileName) throws Exception
 		} 
 	}
 	catch (Exception e) {
+			// formatted htm of the 404 Not Found message
 	      st = "<html><body><p class=MsoNormal align=center style='text-align:center'><b style='mso-bidi-font-weight:\n" + 
 	      		"normal'><span style='font-size:20.0pt;mso-bidi-font-size:11.0pt;line-height:\n" + 
 	      		"107%;color:#C00000'>404 Not Found<o:p></o:p></span></b></p></body></html>\n";
@@ -202,6 +207,12 @@ private void writeContent(OutputStream os, String fileName) throws Exception
    os.write("</body></html>\n".getBytes());
 }
 
+/*
+ * Pulls the date from the system clock, converts it to a pleasing format and returns it as a string
+ * @param date: a Date object
+ * @param niceDate: a Date.Format object of date
+ * @return: a string of the formatted date from the system clock
+ */
 private String getDate() {
 	Date date = new Date();
 	String niceDate = DateFormat.getDateInstance().format(date);
