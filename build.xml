@@ -2,16 +2,10 @@
     <target name="build">
     	<delete file="WebServer.jar"/>
     	<delete dir="build"/>
-    	<mkdir dir="build"/>
-    	<mkdir dir = "build/classes"/>
-    	<mkdir dir="build/jar"/>
-    	<javac srcdir="." destdir="build/classes"/>
-    	<jar destfile="build/jar/WebServer.jar" basedir="build/classes">
-	            <fileset dir="build/classes" includes="**/*.class"/>
-	            <manifest>
-	                <attribute name="Main-Class" value="WebServer"/>
-	            </manifest>
-        </jar>
-        <java jar="build/jar/Webserver.jar" fork="true"/>
-    </target>  
+    	<mkdir dir="build"/>    	
+    	<javac srcdir="." />    	   
+    </target> 
+    <target name="java">
+    	<java destfile="build/WebServer"/>
+    </target>
 </project>
