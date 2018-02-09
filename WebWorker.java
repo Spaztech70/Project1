@@ -20,9 +20,21 @@
 *
 **/
 
+/*
+ * CS 371-M01 Software Development
+ * @co-author Sanford Johnston
+ * @date February 9, 2018
+ * Understanding of the webserver/webworker and how to satisfy the requirements
+ * of Program 2 came from studying these resources
+ * http://cs.au.dk/~amoeller/WWW/javaweb/server.html
+ * https://en.wikipedia.org/wiki/Favicon
+ * cs.fit.edu/~mmahoney/cse3103/java/Webserver.java
+ */
+
 import java.net.Socket;
 import java.lang.Runnable;
 import java.io.*;
+import java.util.*;
 import java.util.Date;
 import java.text.DateFormat;
 import java.util.TimeZone;
@@ -51,11 +63,15 @@ public void run()
    String fileName = "";
    System.err.println("Handling connection...");
    try {
-      InputStream  is = socket.getInputStream(); 	//FROM WHERE IS THIS INPUT STREAM COMING?
-      OutputStream os = socket.getOutputStream(); 	//TO WHERE IS THIS OUTPUT STREAM GOING?
-      fileName = readHTTPRequest(is); 					//
-      writeHTTPHeader(os,"text/html");
-      writeContent(os, fileName);
+      InputStream  is = socket.getInputStream(); 	//INPUT STREAM COMES FROM BROWSER VIA WEBSERVER
+      OutputStream os = socket.getOutputStream(); 	//OUTPUT STREAM GOES TO THE BROWSER DIRECTLY
+      fileName = readHTTPRequest(is); 	
+      
+      // determine the MIME type and print HTTP header
+      String mimeType = getContentType(fileName);	      
+      
+      writeHTTPHeader(os,mimeType);
+      writeContent(os, fileName, mimeType);
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -72,41 +88,27 @@ private String readHTTPRequest(InputStream is)
 { 
    String line;
    String fileName = "";
-   int stringIndex = 0;
-   char dot = '0';  
-   BufferedReader r = new BufferedReader(new InputStreamReader(is));
+     
+   BufferedReader r = new BufferedReader(new InputStreamReader(is));   
+   // request handler loop
    while (true) {
       try {
          while (!r.ready()) Thread.sleep(1);
+         // read first line of request
          line = r.readLine();
-         System.err.println("Request line: ("+line+")");
-                                  
+         System.err.println("Request line: ("+line+")");         
          if (fileName == "")
          {
-            while (dot != '/')
-               {
-                  dot = line.charAt(stringIndex);
-                  stringIndex++;
-               }
-            while (stringIndex < line.length() && dot != '.')
-            {            
-               dot = line.charAt(stringIndex);   
-               fileName = fileName + dot;
-               stringIndex++;
-            }
-            fileName = fileName + "htm";
-         }   
-         if (line.length()==0) 
-        	 {
-        	 System.out.println("File name: " + fileName);
+        	 fileName = getFileName(line);
         	 break;
-        	 }
-         
-      } catch (Exception e) {
+         }
+      } 
+      catch (Exception e) {
          System.err.println("Request error: "+e);
          break;
-      }
+      }      
    }
+   
    return fileName;
 }
 
@@ -129,6 +131,7 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    //os.write("Content-Length: 438\n".getBytes()); 
    os.write("Connection: close\n".getBytes());
    os.write("Content-Type: ".getBytes());
+   os.write("rel=\"icon\" type=\"image/png\" href=\"favicon.png\"".getBytes());    
    os.write(contentType.getBytes());
    os.write("\n\n".getBytes()); // HTTP header ends with 2 newlines
    return;
@@ -141,73 +144,93 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 * @param st is a string used as an intermediary for passing a line of htm to os
 * @param check is a temporary string for identifying one of two special tags which are to be substituted with by a date or the server name when passed to os
 **/
-private void writeContent(OutputStream os, String fileName) throws Exception
+private void writeContent(OutputStream os, String fileName, String mimeType) throws Exception
 {
 	String st = "";
 	String check = "";
 			
+	// IF CONTENT IS HTML, SEND TEXT TO BROWSER
+	// ELSE IF CONTENT IS IMAGE, SEND IMAGE TO BROWSER	
 	try {
+		// Load htm file sent from the run() class
 		File file = new File(fileName);	
-		//InputStream inputfile = new FileInputStream(fileName);
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		
-	    while ((st = in.readLine()) != null)
-		{		   
-	    	check = st;
-	    	// use the string check to look for tags <cs371date> and <cs371server>
-	    	if (check.contains("cs371date")) 
-	    	{
-	    		st = "<span style='font-size:14.0pt;mso-bidi-font-size:11.0pt;line-height:\\n\" + \n" + 
-						"	      		\"107%;color:#C00000'>" + getDate() + "<o:p><br /></o:p></span>" + "<br />";
+		// Use a BufferedReader to read text from a character input stream
+		BufferedReader in = new BufferedReader(new FileReader(file));	
+		if (mimeType == "text/html" || mimeType == "text/plain")
+		{
+			// display contents line by line while src = text
+			while ((st = in.readLine()) != null)
+			{		   
+				// find special tags <cs371date> and <cs371server> and return alternate text
+				check = st;
+				// use the string check to look for tags <cs371date> and <cs371server>
+				if (check.contains("cs371date")) 
+				{
+					st = "<span style='font-size:14.0pt;mso-bidi-font-size:11.0pt;line-height:\\n\" + \n" + 
+							"	      		\"107%;color:#C00000'>" + getDate() + "<o:p><br /></o:p></span>" + "<br />";
+					/* just for fun, loop through the String st and send it to the browser one character at a time
 	    		char dateChar = ' ';
 		    	for (int k = 0; k < st.length(); k++)
 		    	{
 				   dateChar = st.charAt(k);
 				   os.write(dateChar);	    		
-		    	}
-	    		//os.write(st.getBytes());
-	    	}
-	    	else if (check.contains("cs371server")) 
+		    	}*/
+					// passes content as binary
+					os.write(st.getBytes());
+				} // end if special tag 'date'
+				else if (check.contains("cs371server")) 
 				{
-				st = "<span style='font-size:14.0pt;mso-bidi-font-size:11.0pt;line-height:\\n\" + \n" + 
-					"	      		\"107%;color:#C00000'>Sanford J's Awesome Web Browser<o:p><br /></o:p></span>" + "<br />";
-				os.write(st.getBytes());
+					st = "<span style='font-size:14.0pt;mso-bidi-font-size:11.0pt;line-height:\\n\" + \n" + 
+							"	      		\"107%;color:#C00000'>Sanford J's Awesome Web Browser<o:p><br /></o:p></span>" + "<br />";
+					// passes content as binary
+					os.write(st.getBytes());
+				} // end if special tag 'server'
+				// Output the string of text to the web client
+				else if (st.startsWith("src="))
+				{
+					check = getFileName(st);
+					try
+					{
+						InputStream imageFile = new FileInputStream(check);
+						/*st = "HTTP/1.1 200 OK\r\n" +			
+							"Content-Type: " + mimeType + "\r\n" +
+							"Date: " + getDate() + "\r\n" +
+							"Server: FileServer 1.0\r\n\r\n";
+						os.write(st.getBytes());*/
+						sendImage(imageFile, os); // send raw image
+					}
+					catch (FileNotFoundException e)
+					{
+						// formatted htm of the 404 Not Found message
+						st = "<html><body><p class=MsoNormal align=center style='text-align:center'><b style='mso-bidi-font-weight:\n" + 
+								"normal'><span style='font-size:20.0pt;mso-bidi-font-size:11.0pt;line-height:\n" + 
+								"107%;color:blue'>404 Not Found<o:p></o:p></span></b></p></body></html>\n";	      
+						os.write(st.getBytes());
+					}
 				}
-	    	// Output the string of text to the web client
-			else 
-			{
-			//TEST CODE FOR ALTERNATIVELY PASSING DESIRED STRING TO THE CLIENT
-	    	/*char oneChar = ' ';
-	    	for (int i = 0; i < st.length(); i++)
-	    	{
-			   oneChar = st.charAt(i);
-			   os.write(oneChar);	    		
-	    	}*/
-	    	os.write(st.getBytes());
-	    	//System.out.println(st);
-			}
-		} 
+				else 
+				{
+					st = st + " ";
+					os.write(st.getBytes());	    	
+				} // end else not special tag
+			} 
+			in.close();
+		} // end if		
 	}
 	catch (Exception e) {
-			// formatted htm of the 404 Not Found message
-	      st = "<html><body><p class=MsoNormal align=center style='text-align:center'><b style='mso-bidi-font-weight:\n" + 
-	      		"normal'><span style='font-size:20.0pt;mso-bidi-font-size:11.0pt;line-height:\n" + 
-	      		"107%;color:#C00000'>404 Not Found<o:p></o:p></span></b></p></body></html>\n";
-	      /*char errChar = ' ';
-	      for (int j = 0; j < st.length(); j++)
-	      {
-	    	  errChar = st.charAt(j);
-	    	  os.write(errChar);
-	      }*/
-	      os.write(st.getBytes());
-	      return;
+		// formatted htm of the 404 Not Found message
+		st = "<html><body><p class=MsoNormal align=center style='text-align:center'><b style='mso-bidi-font-weight:\n" + 
+				"normal'><span style='font-size:20.0pt;mso-bidi-font-size:11.0pt;line-height:\n" + 
+				"107%;color:#C00000'>404 Not Found<o:p></o:p></span></b></p></body></html>\n";	      
+		os.write(st.getBytes());
+		return;
 	}
-	  
+	// close html page tags
    os.write("<h3>My web server works!</h3>\n".getBytes());
    os.write("</body></html>\n".getBytes());
 }
 
-/*
+/**
  * Pulls the date from the system clock, converts it to a pleasing format and returns it as a string
  * @param date: a Date object
  * @param niceDate: a Date.Format object of date
@@ -217,6 +240,101 @@ private String getDate() {
 	Date date = new Date();
 	String niceDate = DateFormat.getDateInstance().format(date);
 	return niceDate;
+}
+
+/**
+ *  Relying on the filename extension, the mime type for the file 
+ * is determine and returned to the calling method.
+ * @param fileName is the name of the file
+ * @return string of the correct image content type
+ */
+private static String getContentType(String fileName)
+{
+	String mimeType = "";
+	if (fileName.endsWith(".html") || fileName.endsWith(".htm"))
+    {
+  	  mimeType = "text/html";
+    }
+    else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg"))
+    {
+  	  mimeType = "image/jpeg";
+    }
+    else if (fileName.endsWith(".gif"))
+    {
+  	  mimeType = "image/gif";
+    }
+    else if (fileName.endsWith(".png"))
+    {
+  	  mimeType = "image/png";
+    }
+    else
+    {
+  	  mimeType = "text/plain";
+    } 
+	return mimeType;
+}
+
+/**
+ * Gets the name of the file from a string, line
+ * @param line a string of the first GET request line from the browser
+ * @return fileName, the name of the file
+ */
+private static String getFileName(String line)
+{
+	String fileName = "";
+	int stringIndex = 0;
+	char dot = '0';
+	// if line is empty, return an empty string
+	if (line.length()==0) 
+	{
+		System.out.println("File name: " + fileName);
+		return fileName;
+	} 
+	// parse the file name out of the first line of request                        
+	// loop to get past initial undesired characters
+	while (dot != '/'&& dot != '\"')
+	{
+		dot = line.charAt(stringIndex);
+		stringIndex++;
+	}
+	//Retrieves the name of the file so long as the file name does not include a '.' 
+	while (stringIndex < line.length() && dot != '.')
+	{            
+		dot = line.charAt(stringIndex);   
+		fileName = fileName + dot;
+		stringIndex++;
+	}
+	// add the file extension by searching for space
+	dot = line.charAt(stringIndex);
+	while (stringIndex < line.length() && dot != ' ' && dot != '\"')
+	{
+		fileName = fileName + dot;
+		stringIndex++;
+		dot = line.charAt(stringIndex);		
+	}	        
+	// end parse the file name out of the first line of request
+
+	return fileName;
+}
+
+/**
+ * Sends an image to the browser
+ * @param file the name of the file to be displayed
+ * @param out the output stream to the browser
+ */
+private static void sendImage(InputStream file, OutputStream out)
+{
+	try 
+	{
+		byte [] buffer = new byte[10000];
+		while (file.available()>0)
+			out.write(buffer, 0, file.read(buffer));
+	}
+	catch (IOException e)
+	{
+		System.err.println(e);
+	}
+	
 }
 
 } // end class

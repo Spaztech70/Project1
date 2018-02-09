@@ -17,6 +17,7 @@
 import java.net.*;
 import java.io.*;
 
+
 public class WebServer
 {
 
@@ -57,10 +58,9 @@ private boolean start(int port)
    while (true) {
       try {
          // wait and listen for new client connection
-         workerSocket = socket.accept();		// DEBUGGING STOPS HERE
+         workerSocket = socket.accept();         
          System.out.println("Client has made socket connection");
-         //need code here for accepting server socket
-         //WHAT CLIENT AM I SUPPOSED TO USE HERE? INTERNET EXPLORER, FIREFOX, CONSOLE TERMINAL?
+         //need code here for accepting server socket         
 
       } catch (Exception e) {
          System.err.println("No longer accepting: "+e);
@@ -69,8 +69,7 @@ private boolean start(int port)
       // have new client connection, so fire off a worker on it
       worker = new WebWorker(workerSocket);
       new Thread(worker).start();
-      // Something has to happen here.
-      
+       
    }
    return true;
 } // end start
