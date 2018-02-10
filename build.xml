@@ -1,0 +1,6 @@
+<project name="WebServer" default="run">
+    <target name="run">
+    	<javac srcdir="." destdir="test"/>     
+    	<java classpath = "test" classname ="WebServer"/>
+    </target>    
+</project>
